@@ -1,4 +1,17 @@
-module Json.Encode.Fallible exposing (..)
+module Json.Encode.Fallible
+    exposing
+        ( Error
+        , ValueResult
+        , array
+        , bool
+        , fail
+        , float
+        , int
+        , list
+        , null
+        , object
+        , string
+        )
 
 import Array exposing (Array)
 import Json.Encode
@@ -21,7 +34,22 @@ type alias ValueResult =
     Result Error Json.Encode.Value
 
 
-fail : String -> Result Error Json.Encode.Value
+{-| Record an encoding failure. If you detect that the data is not something
+you can encode then you can use this to trigger & record an error in the
+encoding process
+
+    case node of
+        NodeA ->
+            F.string "a"
+
+        NodeB ->
+            F.string "b"
+
+        UnknownNode name ->
+            F.fail ("Encountered unknown node: " ++ name)
+
+-}
+fail : String -> ValueResult
 fail str =
     Err <| List.Nonempty.fromElement ( "", str )
 
@@ -30,35 +58,53 @@ fail str =
 -- Basics
 
 
-string : String -> Result Error Json.Encode.Value
+{-| Encodes a string to a ValueResult
+-}
+string : String -> ValueResult
 string value =
     Ok (Json.Encode.string value)
 
 
-float : Float -> Result Error Json.Encode.Value
+{-| Encodes a float to a ValueResult
+-}
+float : Float -> ValueResult
 float value =
     Ok (Json.Encode.float value)
 
 
-int : Int -> Result Error Json.Encode.Value
+{-| Encodes an int to a ValueResult
+-}
+int : Int -> ValueResult
 int value =
     Ok (Json.Encode.int value)
 
 
-bool : Bool -> Result Error Json.Encode.Value
+{-| Encodes a bool to a ValueResult
+-}
+bool : Bool -> ValueResult
 bool value =
     Ok (Json.Encode.bool value)
 
 
-null : Result Error Json.Encode.Value
+{-| Creates a ValueResult for 'null'
+-}
+null : ValueResult
 null =
     Ok Json.Encode.null
 
 
-list : List (Result Error Json.Encode.Value) -> Result Error Json.Encode.Value
+{-| Encodes a list of ValueResults into a single ValueResult representing a
+Json list. If any errors are encountered then the result is a non-empty list of
+all the errors.
+
+The index is added to the error's path to help you understand where it was
+encountered.
+
+-}
+list : List ValueResult -> ValueResult
 list l =
     let
-        reducer : Result Error Json.Encode.Value -> ( Result Error (List Json.Encode.Value), Int ) -> ( Result Error (List Json.Encode.Value), Int )
+        reducer : ValueResult -> ( Result Error (List Json.Encode.Value), Int ) -> ( Result Error (List Json.Encode.Value), Int )
         reducer value ( acc, index ) =
             let
                 prefix =
@@ -82,10 +128,18 @@ list l =
         |> Result.map Json.Encode.list
 
 
-array : Array (Result Error Json.Encode.Value) -> Result Error Json.Encode.Value
+{-| Encodes an array of ValueResults into a single ValueResult representing a
+Json list. If any errors are encountered then the result is a non-empty list of
+all the errors.
+
+The index is added to the error's path to help you understand where it was
+encountered.
+
+-}
+array : Array ValueResult -> ValueResult
 array arr =
     let
-        reducer : Result Error Json.Encode.Value -> ( Result Error (Array Json.Encode.Value), Int ) -> ( Result Error (Array Json.Encode.Value), Int )
+        reducer : ValueResult -> ( Result Error (Array Json.Encode.Value), Int ) -> ( Result Error (Array Json.Encode.Value), Int )
         reducer value ( acc, index ) =
             let
                 prefix =
@@ -109,10 +163,18 @@ array arr =
         |> Result.map Json.Encode.array
 
 
-object : List ( String, Result Error Json.Encode.Value ) -> Result Error Json.Encode.Value
+{-| Encodes a list of key-value pairs, represented as (String, ValueResult)
+into a single ValueResult representing a Json object. If any errors are
+encountered then the result is a non-empty list of all the errors.
+
+The key is added to the error's path to help you understand where it was
+encountered.
+
+-}
+object : List ( String, ValueResult ) -> ValueResult
 object obj =
     let
-        reducer : ( String, Result Error Json.Encode.Value ) -> Result Error (List ( String, Json.Encode.Value )) -> Result Error (List ( String, Json.Encode.Value ))
+        reducer : ( String, ValueResult ) -> Result Error (List ( String, Json.Encode.Value )) -> Result Error (List ( String, Json.Encode.Value ))
         reducer ( key, value ) acc =
             let
                 prefix =
