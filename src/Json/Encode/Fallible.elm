@@ -17,6 +17,10 @@ type alias Error =
     Nonempty ( Path, Message )
 
 
+type alias ValueResult =
+    Result Error Json.Encode.Value
+
+
 fail : String -> Result Error Json.Encode.Value
 fail str =
     Err <| List.Nonempty.fromElement ( "", str )
